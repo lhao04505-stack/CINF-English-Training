@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CINF 企业英语口语培训系统</title>
+    <style>
+        /* ================= 核心变量 ================= */
+        :root {
+            --primary-blue: #1a3a5f;
+            --accent-gold: #c5a059;
+            --light-gray: #f4f7f9;
+            --text-dark: #333;
+            --white: #ffffff;
+            --success: #28a745;
+            --error: #dc3545;
+            --bg-color: #f0f2f5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; height: 100dvh; overflow: hidden;
+        }
+
+        /* ================= 布局架构 ================= */
+        #viewport {
+            width: 100%; max-width: 850px; height: 100%; background: var(--white);
+            position: relative; display: flex; flex-direction: column;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden;
+        }
+
+        #header {
+            height: 65px; background: var(--primary-blue); display: flex; align-items: center;
+            padding: 0 20px; color: white; justify-content: space-between; flex-shrink: 0; z-index: 100;
+        }
+
+        #nav-toggle { background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.3s;}
+        #nav-toggle:hover { background: var(--accent-gold); }
+        
+        #sidebar {
+            position: absolute; top: 65px; left: -280px; width: 280px; height: calc(100% - 65px);
+            background: rgba(26, 58, 95, 0.98); z-index: 999; transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto; padding: 15px 0; box-shadow: 10px 0 30px rgba(0,0,0,0.15);
+        }
+        #sidebar.active { left: 0; }
+        
+        /* 目录层级样式 */
+        .nav-category { color: var(--accent-gold); font-weight: bold; padding: 15px 20px 10px; font-size: 15px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
+        .nav-category:first-child { border-top: none; margin-top: 0;}
+        .nav-category:hover { background: rgba(255,255,255,0.05); }
+        .nav-sub-container { display: none; background: rgba(0,0,0,0.2); }
+        .nav-sub-container.open { display: block; }
+        
+        .nav-item { color: rgba(255,255,255,0.8); padding: 12px 20px 12px 40px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active-nav { background: var(--primary-blue); color: white; border-left: 4px solid var(--accent-gold); padding-left: 36px;}
+        .nav-item-main { color: rgba(255,255,255,0.9); padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; font-size: 15px; transition: 0.2s; font-weight: bold;}
+        .nav-item-main:hover, .nav-item-main.active-nav { background: var(--accent-gold); color: white; }
+
+        #content-area { flex-grow: 1; position: relative; overflow: hidden; background: white; }
+        .slide {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            padding: 30px 40px 60px 40px; /* 增加底部 padding 防止遮挡 */
+            display: none; flex-direction: column; overflow-y: auto; animation: fadeIn 0.4s ease; -webkit-overflow-scrolling: touch;
+        }
+        .slide.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .bottom-controls {
+            flex-shrink: 0; height: 70px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 30px; background: var(--light-gray); border-top: 1px solid #e0e0e0; z-index: 100;
+        }
+
+        /* ================= 排版与内容样式 ================= */
+        h1 { color: var(--primary-blue); font-size: 26pt; margin: 25px 0; text-align: center; }
+        h2 { color: var(--accent-gold); font-size: 19pt; margin-bottom: 20px; border-left: 6px solid var(--primary-blue); padding-left: 15px; flex-shrink: 0;}
+
+        .sentence-box { margin-bottom: 25px; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #edf2f7; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); transition: 0.3s; }
+        .sentence-box:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .eng-text { font-size: 17pt; font-weight: 700; color: var(--primary-blue); line-height: 1.45;}
+        .ipa { color: #718096; font-size: 12pt; font-family: 'Consolas', monospace; font-weight: normal; margin-left: 10px; white-space: nowrap;}
+        .chn-tip { color: #4a5568; font-size: 12pt; border-top: 1px dashed #eee; padding-top: 8px; margin-top: 5px;}
+
+        .sentence-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;}
+        
+        button { border: none; cursor: pointer; outline: none; font-weight: bold; transition: 0.3s; border-radius: 30px; }
+        button:active { transform: scale(0.96); }
+        .btn-play-sm { background: #ebf8ff; color: #3182ce; padding: 10px 18px; font-size: 14px; border: 1px solid #bee3f8;}
+        .btn-rec-sm { background: var(--primary-blue); color: white; padding: 10px 18px; font-size: 14px; box-shadow: 0 4px 6px rgba(26,58,95,0.2); user-select: none; -webkit-user-select: none;}
+        .btn-rec-sm.preparing { background: var(--accent-gold); box-shadow: 0 0 10px rgba(197, 160, 89, 0.5); }
+        .btn-rec-sm.recording { background: #f56565; animation: pulse 1s infinite; border-radius: 10px;}
+        .btn-ai-helper { background: #faf5ff; color: #805ad5; padding: 10px 18px; font-size: 14px; border: 1px solid #e9d8fd;}
+
+        .eval-panel { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; font-size: 14px; display: none; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .eval-panel.show { display: flex; animation: fadeIn 0.4s ease;}
+        .eval-score { font-size: 26pt; font-weight: 800; color: var(--primary-blue); display: flex; align-items: baseline; gap: 10px;}
+        .eval-score span { font-size: 13pt; font-weight: normal; color: #718096;}
+        .eval-detail { background: white; padding: 15px; border-radius: 8px; color: #2d3748; line-height: 1.7; border: 1px solid #edf2f7; }
+        .live-transcript { font-size: 15px; color: #1a3a5f; background: #ebf8ff; padding: 10px 15px; border-radius: 8px; font-style: italic; display: none; margin-bottom: 5px; border: 1px solid #90cdf4; font-weight: 500;}
+
+        .btn-nav { background: white; color: var(--primary-blue); padding: 10px 20px; border: 1px solid #e2e8f0; }
+        .btn-nav:hover { background: #f8fafc; border-color: var(--accent-gold); }
+        .btn-main { background: var(--primary-blue); color: white; padding: 15px 40px; font-size: 16px; min-width: 180px; box-shadow: 0 10px 15px -3px rgba(26,58,95,0.3);}
+
+        /* ================= 填空与口译 ================= */
+        .paragraph-box { font-size: 15pt; line-height: 2.6; text-align: justify; padding: 25px; background: #f8fafc; border-radius: 15px; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);}
+        .exercise-input { padding: 4px 10px; font-size: 14pt; border: 0; border-bottom: 2px solid var(--accent-gold); width: auto; min-width: 100px; color: var(--primary-blue); font-weight: bold; text-align: center; background: transparent; transition: 0.3s;}
+        .exercise-input:focus { outline: none; border-bottom-color: var(--primary-blue); background: rgba(26,58,95,0.05);}
+        .exercise-input:disabled { border-bottom-color: var(--success); color: var(--success); cursor: not-allowed;}
+        
+        .translation-list { display: flex; flex-direction: column; gap: 20px; }
+        .trans-item { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .trans-ch { font-size: 15pt; font-weight: bold; color: var(--primary-blue); margin-bottom: 15px; line-height: 1.6;}
+        
+        /* ================= 商务模拟 ================= */
+        #chat-container { display: flex; flex-direction: column; height: 100%; gap: 20px; padding-bottom: 20px;}
+        #avatar-area { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 20px; background: linear-gradient(135deg, #1a3a5f, #2c5382); border-radius: 15px; color: white; flex-shrink: 0; box-shadow: 0 4px 20px rgba(26,58,95,0.4); }
+        .avatar-img { width: 70px; height: 70px; border-radius: 20px; background: #fff; border: 4px solid var(--accent-gold); display: flex; align-items: center; justify-content: center; font-size: 36px; animation: floatAvatar 4s ease-in-out infinite; }
+        @keyframes floatAvatar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        #chat-history { flex-grow: 1; background: #f1f5f9; border-radius: 15px; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; border: 1px solid #e2e8f0; min-height: 250px;}
+        .msg-bubble { max-width: 88%; padding: 14px 20px; border-radius: 18px; font-size: 16px; line-height: 1.6; animation: fadeIn 0.4s cubic-bezier(0, 0, 0.2, 1); box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;}
+        .msg-agent { background: white; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg-user { background: var(--primary-blue); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        
+        .chat-controls { display: flex; gap: 15px; flex-shrink: 0; }
+        .chat-controls button { flex: 1; padding: 16px; font-size: 16px;}
+        #final-report { display: none; background: #fff; border: 2px solid var(--accent-gold); padding: 30px; border-radius: 20px; margin-top: 15px; animation: fadeIn 0.6s; box-shadow: 0 10px 25px rgba(197,160,89,0.2); }
+
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) { 
+            .slide { padding: 20px 20px 80px 20px; } /* 移动端增加更深的底部 padding */
+            h1 { font-size: 22pt; } h2 { font-size: 15pt; } .eng-text { font-size: 14pt; } 
+            .paragraph-box { font-size: 13pt; line-height: 2.2;} 
+            .bottom-controls { padding: 0 15px; } .nav-item { padding-left: 20px;} 
+            .nav-item:hover, .nav-item.active-nav { padding-left: 16px;} 
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(245,101,101,0.6); } 70% { box-shadow: 0 0 0 15px rgba(245,101,101,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+    </style>
+</head>
+<body>
+
+<div id="viewport">
+    <div id="header">
+        <button id="nav-toggle" onclick="toggleSidebar()">☰ 课程目录</button>
+        <span style="font-weight:700; font-size: 16px; letter-spacing: 1px;">CINF Smart Training System</span>
+    </div>
+
+    <div id="sidebar"></div>
+
+    <div id="content-area">
+        <!-- 封面 -->
+        <div class="slide active" id="slide-0">
+            <div style="margin: auto 0; text-align: center;">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a3a5f'/><path d='M30 40 L70 40 M30 50 L70 50 M30 60 L50 60' stroke='white' stroke-width='4' stroke-linecap='round'/><circle cx='75' cy='75' r='15' fill='%23c5a059'/><path d='M75 68 L75 82 M68 75 L82 75' stroke='white' stroke-width='3'/></svg>" width="110" style="margin-bottom:30px;">
+                <h1>CINF 商务英语口语</h1>
+                <p style="color:#64748b; font-size: 22px; font-weight: 700; margin-bottom: 50px;">第一部分：公司简介及初级商务联络陪同</p>
+                <button class="btn-main" style="padding: 18px 50px; font-size: 18px; border-radius: 40px;" onclick="requestMicAndStart()">进入学习</button>
+            </div>
+        </div>
+
+        <div id="dynamic-slides"></div>
+
+        <!-- 填空练习 -->
+        <div class="slide" id="slide-exercise">
+            <h2>2. 词汇巩固 (Gap Fill)</h2>
+            <div style="padding-bottom:10px;">
+                <div class="paragraph-box">
+                    CINF was <input type="text" class="exercise-input" data-ans="founded"> (成立于) in 1953 and officially joined <input type="text" class="exercise-input" data-ans="chinalco"> (中国铝业) in 2007. As a national high-tech enterprise, <input type="text" class="exercise-input" data-ans="mining"> (采矿), <input type="text" class="exercise-input" data-ans="smelting"> (冶炼), and <input type="text" class="exercise-input" data-ans="design"> (设计) are our core businesses. <br><br>
+                    We hold multiple licenses including <input type="text" class="exercise-input" data-ans="metallurgy"> (冶金), <input type="text" class="exercise-input" data-ans="building"> (建筑), <input type="text" class="exercise-input" data-ans="municipal"> (市政), and <input type="text" class="exercise-input" data-ans="mapping"> (测绘). Our company provides project design and <input type="text" class="exercise-input" data-ans="general contracting"> (总承包) services. We lead the world in green technologies like <input type="text" class="exercise-input" data-ans="oxygen pressure leaching"> (氧压浸出) and <input type="text" class="exercise-input" data-ans="flash smelting"> (闪速冶炼).<br><br>
+                    With an <input type="text" class="exercise-input" data-ans="aaa"> (AAA级) credit rating, we have many <input type="text" class="exercise-input" data-ans="national design masters"> (国家级设计大师). We focus on advanced <input type="text" class="exercise-input" data-ans="water pollution"> (水污染) control engineering. Moving forward, CINF will focus on driving <input type="text" class="exercise-input" data-ans="innovation"> (创新) for our global customers.
+                </div>
+            </div>
+            <div style="text-align:center;">
+                <p id="fill-feedback" style="margin-top:10px; font-weight:700; font-size:16px; color:var(--accent-gold);">✍️ 填写后点击空白处校验对错。</p>
+            </div>
+        </div>
+
+        <!-- 长难句口译 -->
+        <div class="slide" id="slide-translation">
+            <h2>3. 长难句口译 (Oral Translation)</h2>
+            <div style="padding-bottom:10px;">
+                <div style="background:#e8f5e9; border: 1px solid var(--success); padding: 15px; border-radius:8px; font-size:14px; color:#333; margin-bottom: 20px; line-height: 1.5;">
+                    💡 <b>学习提示：</b>请按住按钮，尝试用流利的英语翻译出来！
+                </div>
+                <div class="translation-list" id="trans-list-container">
+                    <!-- JS 动态填充长难句 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 商务模拟对话 -->
+        <div class="slide" id="slide-roleplay">
+            <div id="chat-container">
+                <h2>4. 商务陪同实战 (Role-play)</h2>
+                
+                <div id="avatar-area">
+                    <div class="avatar-img">🤵🏼‍♂️</div>
+                    <div>
+                        <div style="font-weight:700; font-size: 18px;">James Robertson (Client)</div>
+                        <div style="font-size: 13px; opacity: 0.9;" id="agent-status">等待开始...</div>
+                    </div>
+                </div>
+
+                <div id="chat-history"></div>
+                <div id="final-report"></div>
+
+                <div class="chat-controls">
+                    <button class="btn-main" id="btn-chat-start" onclick="startMultiTurnChat()">开始模拟对话</button>
+                    <!-- 增加了 ontouchcancel 防止手机滑动误触断开 -->
+                    <button class="btn-rec-sm" id="btn-chat-rec" style="display:none;" 
+                            onmousedown="handleRecDown(this, '', '', 'chat')" onmouseup="handleRecUp(this, 'chat')" 
+                            onmouseleave="handleRecUp(this, 'chat')"
+                            ontouchstart="event.preventDefault(); handleRecDown(this, '', '', 'chat')"
+                            ontouchend="event.preventDefault(); handleRecUp(this, 'chat')"
+                            ontouchcancel="event.preventDefault(); handleRecUp(this, 'chat')">
+                        🎤 按住回答
+                    </button>
+                    <button class="btn-nav" id="btn-chat-end" style="display:none;" onclick="endMultiTurnChat()">结束并获取评价</button>
+                    <button class="btn-main" id="btn-chat-retry" style="display:none; background:var(--accent-gold);" onclick="resetRolePlay()">重新开始实战</button>
+                </div>
+                
+                <!-- 核心修复：将实时字幕移到按钮【下方】，彻底解决按钮被挤走导致的瞬间断触Bug -->
+                <div class="live-transcript" id="chat_live_transcript" style="display:none; margin-top: 15px;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="bottom-controls" id="global-controls" style="display:none;">
+        <button class="btn-nav" onclick="prevSlide()">◀ 上一页</button>
+        <span id="page-indicator" style="color:#94a3b8; font-size:14px; font-weight: 700;">1 / N</span>
+        <button class="btn-nav" onclick="nextSlide()">下一页 ▶</button>
+    </div>
+</div>
+
+<script>
+    /* ================= 0. 豆包大模型直连 ================= */
+    const API_CONFIG = {
+        url: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+        model: "doubao-seed-2-0-code-preview-260215", 
+        apiKey: "def39ec7-3d4e-48c4-9845-c153912c757e" 
+    };
+
+    async function callLLM(systemPrompt, userPrompt, expectJson = false) {
+        const payload = {
+            model: API_CONFIG.model,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ]
+        };
+
+        const fetchOptions = {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_CONFIG.apiKey}`
+            },
+            body: JSON.stringify(payload)
+        };
+
+        try {
+            const response = await fetch(API_CONFIG.url, fetchOptions);
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(`HTTP ${response.status} ${err.error?.message || ''}`);
+            }
+            const result = await response.json();
+            return result.choices?.[0]?.message?.content || "";
+        } catch (error) {
+            throw new Error(`连接大模型失败: ${error.message}`);
+        }
+    }
+
+    /* ================= 1. 课程数据 ================= */
+    const setsData = [
+        { title: "Set 1: 成立背景", content: [
+            { en: "CINF was founded in 1953.", ipa: "/'faʊndɪd/", ch: "成立于1953年" },
+            { en: "CINF joined Chinalco in 2007.", ipa: "/'tʃaɪnælkoʊ/", ch: "2007年加入中国铝业" },
+            { en: "CINF was renamed in 2011.", ipa: "/ˌriː'neɪmd/", ch: "2011年完成更名改制" }
+        ]},
+        { title: "Set 3: 核心业务", content: [
+            { en: "Mining is our core business.", ipa: "/'maɪnɪŋ/", ch: "采矿是核心业务" },
+            { en: "Smelting is our core business.", ipa: "/'smeltɪŋ/", ch: "冶炼是核心业务" },
+            { en: "Design is our core business.", ipa: "/dɪ'zaɪn/", ch: "设计是核心业务" }
+        ]},
+        { title: "Set 8: 尖端技术", content: [
+            { en: "Our company leads in green smelting technology.", ipa: "/'smeltɪŋ/", ch: "绿色冶炼技术全球领先" },
+            { en: "Our company leads in oxygen pressure leaching.", ipa: "/'liːtʃɪŋ/", ch: "氧压浸出工艺世界顶尖" },
+            { en: "Our company leads in flash smelting technology.", ipa: "/flæʃ/", ch: "闪速熔炼技术优势显著" }
+        ]},
+        { title: "Set 11: 创新平台", content: [
+            { en: "Our company established three national-level innovation research platforms.", ipa: "/'næʃnəl-levl/", ch: "建立了三个国家级创新平台" },
+            { en: "Our company established nine provincial-level innovation research platforms.", ipa: "/prə'vɪnʃl/", ch: "九个省级研发创新平台" },
+            { en: "Our company established multiple pilot bases.", ipa: "/'paɪlət 'beɪsɪz/", ch: "建立了多个中试基地" }
+        ]},
+        { title: "Set 15: 未来愿景", content: [
+            { en: "CINF will focus on driving innovation for our customers.", ipa: "/'ɪnəveɪʃn/", ch: "专注为客户驱动创新" },
+            { en: "CINF will focus on providing integrity services for our clients.", ipa: "/ɪn'tegrəti/", ch: "提供诚信卓越的服务" },
+            { en: "CINF will focus on becoming a leading enterprise in the industry.", ipa: "/'liːdɪŋ/", ch: "致力于成为行业领军企业" }
+        ]}
+    ];
+
+    const translationData = [
+        { ch: "1. CINF成立于1953年，于2007年正式加入中国铝业，并在2011年完成了更名改制。", en: "CINF was founded in 1953, officially joined Chinalco in 2007, and was renamed in 2011." },
+        { ch: "2. 作为一家国家级高新技术企业，我们的核心业务涵盖了采矿、冶炼以及项目设计。", en: "As a national high-tech enterprise, our core businesses cover mining, smelting, and project design." },
+        { ch: "3. 我们拥有冶金、建筑和市政工程等多项资质，这使我们能够提供卓越的总承包服务。", en: "We hold multiple licenses including metallurgy, building, and municipal engineering, which allows us to provide excellent general contracting services." },
+        { ch: "4. 我们公司在绿色冶炼技术方面全球领先，特别是在氧压浸出和闪速熔炼工艺上。", en: "Our company leads the world in green smelting technology, especially in oxygen pressure leaching and flash smelting." },
+        { ch: "5. 凭借AAA级信用评级和众多国家级设计大师，我们已成功完成了数千个大型项目。", en: "With an AAA credit rating and many national design masters, we have successfully completed thousands of large projects." },
+        { ch: "6. 为了推动持续创新，我们建立了多个国家级和省级研发平台以及中试基地。", en: "To drive continuous innovation, we have established multiple national and provincial-level research platforms and pilot bases." },
+        { ch: "7. 在环保领域，我们的团队高度专注于先进的水污染和空气污染控制工程。", en: "In the field of environmental protection, our team focuses heavily on advanced water and air pollution control engineering." },
+        { ch: "8. 展望未来，CINF将继续为全球客户提供诚信服务，致力于成为行业领军企业。", en: "Looking ahead, CINF will continue to provide integrity services for our global clients, and focus on becoming a leading enterprise in the industry." }
+    ];
+
+    /* ================= 2. 录音系统 ================= */
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;     
+    let isRecognizing = false;   
+    let finalTranscript = "";    
+    let interimTranscript = "";  
+    let currentTargetSid = "";
+    let currentTargetText = "";
+    let currentMode = ""; 
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = true; 
+
+        recognition.onstart = () => {
+            isRecognizing = true;
+            const activeBtn = document.querySelector('.btn-rec-sm.preparing');
+            if (activeBtn) {
+                activeBtn.classList.remove('preparing');
+                activeBtn.classList.add('recording');
+                activeBtn.innerText = "正在聆听...";
+            }
+        };
+
+        recognition.onresult = (event) => {
+            let tempInterim = "";
+            let newFinal = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    newFinal += event.results[i][0].transcript + " ";
+                } else {
+                    tempInterim += event.results[i][0].transcript;
+                }
+            }
+            // 实时追加，确保不丢字
+            finalTranscript += newFinal;
+            interimTranscript = tempInterim;
+            let displayText = (finalTranscript + interimTranscript).trim();
+            
+            if (currentTargetSid && (currentMode === 'sentence' || currentMode === 'trans')) {
+                const liveEl = document.getElementById(`live_${currentTargetSid}`);
+                if (liveEl) {
+                    liveEl.style.display = 'block';
+                    liveEl.innerText = "🔊 识别中: " + displayText + "...";
+                }
+            } else if (currentMode === 'chat') {
+                const chatLiveEl = document.getElementById('chat_live_transcript');
+                if (chatLiveEl) {
+                    chatLiveEl.style.display = 'block';
+                    chatLiveEl.innerText = "🔊 识别中: " + displayText + "...";
+                }
+            }
+        };
+
+        recognition.onerror = (e) => {
+            if (e.error === 'not-allowed') { alert("⚠️ 麦克风权限被拒绝！请允许使用麦克风。"); }
+        };
+        
+        recognition.onend = () => {
+            isRecognizing = false;
+            if (isRecording) { try { recognition.start(); } catch(e) {} }
+        };
+    }
+
+    function requestMicAndStart() {
+        if (recognition && !isRecognizing) { try { recognition.start(); } catch(e) {} }
+        nextSlide();
+    }
+
+    function handleRecDown(btn, text, sid, mode) {
+        if (!recognition) { alert("浏览器不支持录音功能，请使用 Chrome 浏览器。"); return; }
+        if (isRecording) return; 
+        
+        // 核心修复：按下录音键时，强制打断外商的话，防止麦克风录入电脑自身的发音
+        if('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+
+        isRecording = true; 
+        currentMode = mode; currentTargetText = text; currentTargetSid = sid;
+        finalTranscript = ""; interimTranscript = ""; 
+        
+        btn.innerText = "准备中..."; btn.classList.add('preparing'); 
+
+        if (mode === 'sentence' || mode === 'trans') {
+            document.getElementById(`eval_${sid}`).classList.add('show');
+            document.getElementById(`detail_${sid}`).innerHTML = "🎙️ 启动中，变红后开始说话...";
+            document.getElementById(`score_${sid}`).innerHTML = "-- <span>/ 100</span>";
+            const liveEl = document.getElementById(`live_${sid}`);
+            if (liveEl) { liveEl.style.display = 'block'; liveEl.innerText = "🔊 准备收音..."; }
+        } else {
+            document.getElementById('agent-status').innerText = "🎙️ 请开始说话...";
+            const chatLiveEl = document.getElementById('chat_live_transcript');
+            if (chatLiveEl) { chatLiveEl.style.display = 'block'; chatLiveEl.innerText = "🔊 准备收音..."; }
+        }
+
+        if (!isRecognizing) { try { recognition.start(); } catch(e) {} } else { recognition.onstart(); }
+    }
+
+    function handleRecUp(btn, mode) {
+        if (!isRecording) return;
+        isRecording = false; 
+        
+        btn.classList.remove('recording', 'preparing');
+        if(mode === 'chat') btn.innerText = "🎤 按住回答";
+        else if (mode === 'trans') btn.innerText = "🎤 按住口译";
+        else btn.innerText = "🎤 朗读测评";
+
+        if (mode === 'sentence' || mode === 'trans') {
+            document.getElementById(`detail_${currentTargetSid}`).innerHTML = `<span class="loading-spinner" style="border-top-color:var(--primary-blue)"></span> 正在连接 AI 进行分析...`;
+        } else {
+            document.getElementById('agent-status').innerHTML = `<span class="loading-spinner"></span> James 正在思考...`;
+        }
+
+        // 核心修复：松开按钮后多等 600 毫秒，收集最后一个字的尾音，彻底告别丢字漏句
+        setTimeout(() => { 
+            if (isRecognizing) { try { recognition.stop(); } catch(e) {} }
+            flushRecordingToLLM(); 
+        }, 600);
+    }
+
+    function flushRecordingToLLM() {
+        let fullText = (finalTranscript + " " + interimTranscript).trim();
+        
+        if (currentMode === 'chat') {
+            const chatLiveEl = document.getElementById('chat_live_transcript');
+            if (chatLiveEl) chatLiveEl.style.display = 'none';
+        }
+
+        if (!fullText) {
+            if (currentMode === 'sentence' || currentMode === 'trans') renderError(currentTargetSid, "未检测到声音，请大声朗读。");
+            else document.getElementById('agent-status').innerText = "未听到声音，请重试。";
+            return;
+        }
+
+        if (currentMode === 'sentence') evaluateSpeechText(currentTargetText, fullText);
+        else if (currentMode === 'trans') evaluateTransText(currentTargetText, fullText);
+        else processChatText(fullText);
+        
+        // 提交后清空目标
+        currentTargetSid = "";
+        currentTargetText = "";
+    }
+
+    function renderError(sid, msg) {
+        document.getElementById(`eval_${sid}`).classList.add('show');
+        document.getElementById(`score_${sid}`).innerHTML = "0 <span>/ 100</span>";
+        document.getElementById(`detail_${sid}`).innerHTML = `⚠️ <b>提示：</b> ${msg}`;
+        const liveEl = document.getElementById(`live_${sid}`);
+        if(liveEl) liveEl.style.display = 'none';
+    }
+
+    /* ================= 3. 界面初始化 ================= */
+    let currentSlideIndex = 0; let totalSlides = 0;
+    const sidebar = document.getElementById('sidebar');
+
+    function init() {
+        createMainNavItem("首页", 0);
+
+        const cat1 = document.createElement('div');
+        cat1.className = 'nav-category';
+        cat1.innerHTML = '1. 核心语料朗读 <span style="font-size:12px;">▼</span>';
+        sidebar.appendChild(cat1);
+        
+        const subContainer = document.createElement('div');
+        subContainer.className = 'nav-sub-container';
+        sidebar.appendChild(subContainer);
+        
+        cat1.onclick = () => { subContainer.classList.toggle('open'); };
+
+        const container = document.getElementById('dynamic-slides');
+        
+        setsData.forEach((set, setIdx) => {
+            const slideIdx = setIdx + 1;
+            const item = document.createElement('div');
+            item.className = 'nav-item';
+            item.innerText = set.title;
+            item.onclick = () => { currentSlideIndex = slideIdx; updateUI(); sidebar.classList.remove('active'); };
+            subContainer.appendChild(item);
+
+            let sentencesHTML = set.content.map((item, itemIdx) => {
+                const sid = `s_${setIdx}_${itemIdx}`;
+                const cleanText = item.en.replace(/[']/g, "\\'"); 
+                return `
+                <div class="sentence-box">
+                    <div class="eng-text">${item.en} <span class="ipa">${item.ipa}</span></div>
+                    <div class="chn-tip">${item.ch}</div>
+                    <div class="sentence-actions">
+                        <button class="btn-play-sm" onclick="speakText('${cleanText}')">▶ 范读</button>
+                        <button class="btn-rec-sm" onmousedown="handleRecDown(this, '${cleanText}', '${sid}', 'sentence')" onmouseup="handleRecUp(this, 'sentence')" onmouseleave="handleRecUp(this, 'sentence')" ontouchstart="event.preventDefault(); handleRecDown(this, '${cleanText}', '${sid}', 'sentence')" ontouchend="event.preventDefault(); handleRecUp(this, 'sentence')">🎤 朗读测评</button>
+                        <button class="btn-ai-helper" onclick="callSmartHelper('${cleanText}', '${sid}')">✨ AI 重点词汇讲解</button>
+                    </div>
+                    <div class="live-transcript" id="live_${sid}"></div>
+                    <div class="eval-panel" id="eval_${sid}"><div class="eval-score" id="score_${sid}">-- <span>/ 100</span></div><div class="eval-detail" id="detail_${sid}">正在解析...</div></div>
+                </div>`;
+            }).join('');
+            
+            const slideDiv = document.createElement('div');
+            slideDiv.className = 'slide';
+            slideDiv.id = `slide-${slideIdx}`;
+            slideDiv.innerHTML = `<h2>1. ${set.title}</h2>${sentencesHTML}`;
+            container.appendChild(slideDiv);
+        });
+
+        const transContainer = document.getElementById('trans-list-container');
+        translationData.forEach((item, idx) => {
+            const sid = `trans_${idx}`;
+            const cleanEn = item.en.replace(/[']/g, "\\'");
+            transContainer.innerHTML += `
+                <div class="trans-item">
+                    <div class="trans-ch">${item.ch}</div>
+                    <div class="sentence-actions">
+                        <button class="btn-rec-sm" style="background:var(--accent-gold);" onmousedown="handleRecDown(this, '${cleanEn}', '${sid}', 'trans')" onmouseup="handleRecUp(this, 'trans')" onmouseleave="handleRecUp(this, 'trans')" ontouchstart="event.preventDefault(); handleRecDown(this, '${cleanEn}', '${sid}', 'trans')" ontouchend="event.preventDefault(); handleRecUp(this, 'trans')">🎤 按住进行口译</button>
+                        <button class="btn-play-sm" onclick="document.getElementById('ans_${sid}').style.display='block'">👁️ 查看参考译文</button>
+                    </div>
+                    <div id="ans_${sid}" style="display:none; margin-top:12px; color:var(--primary-blue); font-weight:bold; font-size:15px;">👉 ${item.en}</div>
+                    <div class="live-transcript" id="live_${sid}"></div>
+                    <div class="eval-panel" id="eval_${sid}"><div class="eval-score" id="score_${sid}">-- <span>/ 100</span></div><div class="eval-detail" id="detail_${sid}">正在解析...</div></div>
+                </div>
+            `;
+        });
+
+        createMainNavItem("2. 词汇巩固 (Gap Fill)", setsData.length + 1);
+        createMainNavItem("3. 长难句口译挑战", setsData.length + 2);
+        createMainNavItem("4. 商务陪同实战", setsData.length + 3);
+        
+        totalSlides = setsData.length + 4;
+        updateUI();
+        initGapFill();
+    }
+
+    function createMainNavItem(title, idx) {
+        const item = document.createElement('div');
+        item.className = 'nav-item-main';
+        item.innerText = title;
+        item.onclick = () => { currentSlideIndex = idx; updateUI(); sidebar.classList.remove('active'); };
+        sidebar.appendChild(item);
+    }
+
+    function toggleSidebar() { sidebar.classList.toggle('active'); }
+    function nextSlide() { if(currentSlideIndex < totalSlides - 1) { currentSlideIndex++; updateUI(); } }
+    function prevSlide() { if(currentSlideIndex > 0) { currentSlideIndex--; updateUI(); } }
+
+    function updateUI() {
+        document.querySelectorAll('.slide').forEach((s, i) => s.classList.toggle('active', i === currentSlideIndex));
+        document.querySelectorAll('.nav-item').forEach((item, i) => {
+            item.classList.toggle('active-nav', i + 1 === currentSlideIndex);
+        });
+        document.querySelectorAll('.nav-item-main').forEach((item, i) => {
+            let targetIdx = i === 0 ? 0 : setsData.length + i;
+            item.classList.toggle('active-nav', targetIdx === currentSlideIndex);
+        });
+
+        const ctrl = document.getElementById('global-controls');
+        if(currentSlideIndex === 0) { ctrl.style.display = 'none'; } 
+        else { ctrl.style.display = 'flex'; document.getElementById('page-indicator').innerText = `Step ${currentSlideIndex} / ${totalSlides - 1}`; }
+    }
+
+    /* ================= 4. 音效与范读 ================= */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(isCorrect) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+        osc.type = isCorrect ? 'sine' : 'sawtooth';
+        osc.frequency.setValueAtTime(isCorrect ? 880 : 220, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    function speakText(text) {
+        if('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US'; 
+            msg.rate = 0.68;
+            msg.pitch = 0.9;
+            window.speechSynthesis.speak(msg);
+        }
+    }
+
+    /* ================= 5. ✨ AI 分析 ================= */
+    
+    async function callSmartHelper(sentence, sid) {
+        const panel = document.getElementById(`eval_${sid}`);
+        const detail = document.getElementById(`detail_${sid}`);
+        panel.classList.add('show');
+        document.getElementById(`score_${sid}`).style.display = 'none';
+        detail.innerHTML = `<span class="loading-spinner" style="border-top-color:var(--accent-gold)"></span> AI 正在提取核心词汇...`;
+        
+        const prompt = `你是一位顶尖的商务英语翻译专家。请挑出这句话里的1-2个重点业务词汇进行讲解： "${sentence}"。
+        【格式严格要求】：
+        1. 绝对不要使用任何 Markdown 符号（如 ###, **, *）。
+        2. 直接输出纯 HTML 代码。每个词汇的讲解必须分行，并使用不同颜色区分。
+        3. 请参考以下 HTML 结构输出：
+        <div style="margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
+            <div style="margin-bottom: 5px;"><span style="color: #c5a059; font-weight: bold; font-size: 16px;">[英文单词]</span> <span style="color: #718096; font-family: monospace;">[音标]</span></div>
+            <div style="color: #1a3a5f; margin-bottom: 5px; font-weight: 500;">💡 释义：[中文精准释义]</div>
+            <div style="color: #4a5568; font-style: italic; font-size: 13px;">📝 例句：[英文例句] <br> <span style="color: #a0aec0;">[中文翻译]</span></div>
+        </div>`;
+        try {
+            let res = await callLLM(prompt, "请讲解");
+            // 增加简单的正则替换，以防大模型仍然输出 markdown 标记
+            res = res.replace(/###/g, '').replace(/\*\*/g, '').replace(/```html/g, '').replace(/```/g, '');
+            detail.innerHTML = `✨ <b>AI 重点词汇讲解：</b><div style="margin-top:15px;">${res}</div>`;
+        } catch(e) { 
+            detail.innerHTML = `⚠️ <b>解析失败：</b> ${e.message}`;
+        }
+    }
+
+    async function evaluateSpeechText(target, transcript) {
+        const sid = currentTargetSid; 
+        const scoreUI = document.getElementById(`score_${sid}`);
+        const detailUI = document.getElementById(`detail_${sid}`);
+        scoreUI.style.display = 'flex'; 
+        
+        const liveEl = document.getElementById(`live_${sid}`);
+        if(liveEl) liveEl.style.display = 'none';
+        
+        let tClean = target.replace(/CINF/gi, "").replace(/[.,]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+        let uWords = transcript.replace(/CINF/gi, "").toLowerCase().split(/\s+/);
+        let match = tClean.filter(w => uWords.includes(w)).length;
+        let score = Math.floor((match / tClean.length) * 100);
+        if(score > 100) score = 100;
+        if(score < 40 && match > 0) score += 20;
+        
+        let color = score >= 85 ? "var(--success)" : (score >= 60 ? "var(--accent-gold)" : "var(--error)");
+        scoreUI.innerHTML = `<span style="color:${color}; font-size:26px;">${score}</span> <span>/ 100</span>`;
+        
+        const sysPrompt = `你是一位专业且极具亲和力的商务英语导师。标准原句是："${target}"，对方实际读的是："${transcript}"。
+        【最高指令】：绝对不能对对方读的 "CINF" 或 "Chinalco" 这类专有名词提出任何批评或纠正！直接忽略它们！
+        【语气指令】：绝对禁止出现“学员”、“学生”等字眼，请直接用“你”来称呼对方。所有的反馈都必须严格遵循“先鼓励表扬，再提出完善建议”的原则。
+        请用中文给出一个简短的发音指导（1-2句话内）。不论读得如何，都必须先肯定其开口的努力或读对的部分，然后用温和的语气指出除专有名词外需要改善的个别单词或连读细节。`;
+        try {
+            const advice = await callLLM(sysPrompt, "请进行发音测评。");
+            detailUI.innerHTML = `<strong>系统识别：</strong> "${transcript}"<br>💡 <b>AI 发音指导：</b> ${advice}`;
+        } catch(e) {
+            detailUI.innerHTML = `<strong>系统识别：</strong> "${transcript}"<br>💡 <b>基础诊断：</b> 匹配率为 ${score}%。(${e.message})`;
+        }
+    }
+
+    async function evaluateTransText(target, transcript) {
+        const sid = currentTargetSid; 
+        const scoreUI = document.getElementById(`score_${sid}`);
+        const detailUI = document.getElementById(`detail_${sid}`);
+        scoreUI.style.display = 'flex'; 
+        
+        const liveEl = document.getElementById(`live_${sid}`);
+        if(liveEl) liveEl.style.display = 'none';
+
+        const sysPrompt = `你是一位亲切的商务英语导师。这是一句考察商务长难句的口译。
+        标准参考译文："${target}"。对方实际说出的口译内容："${transcript}"。
+        【最高指令】：绝对不要因为口译中专有名词 "CINF" 或 "Chinalco" 的发音识别错误而扣分！请完全忽略这两个词的拼写或发音失误。绝对禁止出现“学员”、“学生”等字眼，请直接用“你”来称呼对方。
+        请对口译进行打分（0-100的整数），并用鼓励性的语气简评其语法、连词使用和意思传达的准确性。
+        务必严格返回 JSON 格式数据，不要带任何 markdown 标记：{"score": 90, "comment": "你的中文点评"}`;
+        
+        try {
+            const rawRes = await callLLM(sysPrompt, "请进行评分。", true);
+            // 精准正则提取 JSON 字符串，防止大模型加上了 ```json 前后缀
+            let jsonStr = rawRes.match(/\{[\s\S]*\}/)?.[0] || rawRes;
+            const data = JSON.parse(jsonStr);
+            
+            let color = data.score >= 85 ? "var(--success)" : (data.score >= 60 ? "var(--accent-gold)" : "var(--error)");
+            scoreUI.innerHTML = `<span style="color:${color}; font-size:26px;">${data.score}</span> <span>/ 100</span>`;
+            detailUI.innerHTML = `<strong>您的口译：</strong> "${transcript}"<br>💡 <b>专业点评：</b> ${data.comment}`;
+        } catch(e) {
+            scoreUI.innerHTML = `<span style="color:var(--primary-blue); font-size:26px;">80</span> <span>/ 100</span>`;
+            detailUI.innerHTML = `<strong>您的口译：</strong> "${transcript}"<br>💡 意思传达基本清晰。(${e.message})`;
+        }
+    }
+
+    /* ================= 6. ✨ 商务实战 ================= */
+    let chatHistory = [];
+    async function startMultiTurnChat() {
+        document.getElementById('chat-history').innerHTML = "";
+        document.getElementById('btn-chat-start').style.display = 'none';
+        document.getElementById('btn-chat-rec').style.display = 'block';
+        document.getElementById('btn-chat-end').style.display = 'block';
+        document.getElementById('final-report').style.display = 'none';
+        document.getElementById('btn-chat-retry').style.display = 'none';
+        document.getElementById('agent-status').innerText = "James Robertson 在线";
+        
+        const initMsg = "Hello! I'm James Robertson. I'm very interested in CINF. Could you please give me a brief introduction about your company's core business?";
+        appendMsg("agent", initMsg);
+        speakText(initMsg);
+        chatHistory = [{role: "assistant", content: initMsg}];
+    }
+
+    async function processChatText(transcript) {
+        const sysPrompt = `你扮演外商James Robertson先生，正在考察CINF。
+        任务1：根据对方的输入文本（Transcript），推测语境并加上准确的标点符号。
+        任务2：仔细阅读对方的回答，给出一个真实、自然且紧扣发言内容的英文回应（30词内）。不要自顾自说话。
+        任务3：在回应的最后，务必主动抛出一个与刚才的话题相关的新业务问题，继续引导对话。
+        严格只返回合法的 JSON 格式数据，绝不带有任何其他废话或 Markdown 标记：
+        {"punctuatedText": "带标点的对方文字", "reply": "你的英文回应"}`;
+        
+        try {
+            const rawRes = await callLLM(sysPrompt, `Transcript: ${transcript}. 历史对话: ${JSON.stringify(chatHistory.slice(-4))}`, true);
+            // 精准正则提取 JSON 字符串
+            let jsonStr = rawRes.match(/\{[\s\S]*\}/)?.[0] || rawRes;
+            const data = JSON.parse(jsonStr);
+            
+            appendMsg("user", data.punctuatedText || transcript + "."); 
+            appendMsg("agent", data.reply);
+            chatHistory.push({role: "user", content: data.punctuatedText || transcript + "."}, {role: "assistant", content: data.reply});
+            speakText(data.reply);
+        } catch(e) {
+            console.error(e);
+            const puncText = transcript.trim() + (transcript.trim().endsWith('?') ? "" : ".");
+            appendMsg("user", puncText);
+            const fallbackReply = "That's quite impressive. What about your environmental protection capabilities?";
+            appendMsg("agent", fallbackReply);
+            chatHistory.push({role: "user", content: puncText}, {role: "assistant", content: fallbackReply});
+            speakText(fallbackReply); 
+        } finally { 
+            document.getElementById('agent-status').innerText = "James 正在等待您的回复..."; 
+        }
+    }
+
+    function appendMsg(role, text) {
+        const history = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = `msg-bubble msg-${role}`;
+        div.innerText = (role === 'user' ? '🎤 ' : '') + text;
+        history.appendChild(div);
+        history.scrollTop = history.scrollHeight;
+    }
+
+    async function endMultiTurnChat() {
+        document.getElementById('btn-chat-rec').style.display = 'none';
+        document.getElementById('btn-chat-end').style.display = 'none';
+        const report = document.getElementById('final-report');
+        report.style.display = 'block';
+        report.innerHTML = `<div style="text-align:center;"><span class="loading-spinner" style="border-top-color:var(--accent-gold)"></span> 正在生成实战测评报告...</div>`;
+        
+        const chatLogs = chatHistory.map(m => `${m.role}: ${m.content}`).join("\n");
+        const sysPrompt = `你是亲切资深的商务英语导师。请根据以下对话记录生成专属指导报告。
+        【重要警告】：对话中包含扮演外商的 "assistant" 和用户的 "user"。你必须只评价 "user" 的表现，绝对不要评价外商！绝对禁止在报告中出现“学员”、“学生”等字眼，请全程用“你”来称呼对方，以亲切导师的身份进行指导。
+        报告内容包括：1. 提取对方说的地道表达并给予表扬；2. 对简单的句子提出温柔的升华建议；3. 综合鼓励并评定商务沟通表现。
+        必须纯HTML排版输出，用中文回答，不要用 Markdown 标记。`;
+
+        try {
+            const reportContent = await callLLM(sysPrompt, chatLogs);
+            report.innerHTML = `<div style="text-align:center; font-size:18px; color:var(--primary-blue); font-weight:700; margin-bottom:15px;">📊 商务沟通指导报告</div>` + reportContent;
+            document.getElementById('btn-chat-retry').style.display = 'block'; 
+        } catch(e) { 
+            report.innerHTML = `报告生成失败：${e.message}`; 
+            document.getElementById('btn-chat-retry').style.display = 'block'; 
+        }
+    }
+
+    function resetRolePlay() {
+        document.getElementById('final-report').style.display = 'none';
+        document.getElementById('chat-history').innerHTML = "";
+        document.getElementById('btn-chat-retry').style.display = 'none';
+        document.getElementById('btn-chat-start').style.display = 'block';
+        document.getElementById('agent-status').innerText = "等待开始...";
+        chatHistory = [];
+    }
+
+    /* ================= 7. 填空练习 ================= */
+    function initGapFill() {
+        document.querySelectorAll('.exercise-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const isCorrect = e.target.value.toLowerCase().trim() === e.target.getAttribute('data-ans').toLowerCase();
+                playBeep(isCorrect);
+                if(isCorrect) {
+                    e.target.disabled = true; e.target.style.color = "var(--success)";
+                    e.target.style.borderBottomColor = "var(--success)";
+                } else {
+                    e.target.style.color = "var(--error)";
+                    e.target.style.borderBottomColor = "var(--error)";
+                    setTimeout(() => { 
+                        if(!e.target.disabled) {
+                            e.target.style.color = "var(--primary-blue)"; 
+                            e.target.style.borderBottomColor = "var(--accent-gold)";
+                        }
+                    }, 1500);
+                }
+            });
+        });
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
